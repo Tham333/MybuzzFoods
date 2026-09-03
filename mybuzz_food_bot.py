@@ -751,7 +751,7 @@ def format_opening_hours(
         )
 
         result.append(
-            f"{day_name}: "
+            f"{day_name:<9}: "
             f"{time_text}"
         )
 
