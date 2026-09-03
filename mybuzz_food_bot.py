@@ -31,7 +31,7 @@ STATE_FILE = "bot_state.json"
 
 
 # ============================================================
-# ENVIRONMENT VARIABLES
+# ENVIRONMENT
 # ============================================================
 
 GOOGLE_MAPS_API_KEY = os.getenv(
@@ -85,7 +85,7 @@ SEARCH_LOCATIONS = [
 
 
 # ============================================================
-# SEARCH QUERIES
+# FOOD SEARCH QUERIES
 # ============================================================
 
 FOOD_QUERIES = [
@@ -103,83 +103,121 @@ FOOD_QUERIES = [
 
 
 # ============================================================
-# HELPERS
+# BASIC HELPERS
 # ============================================================
 
 def clean_text(text):
+
     if not text:
         return ""
 
     text = str(text)
+
     text = text.replace("\r", " ")
     text = text.replace("\n", " ")
-    text = re.sub(r"\s+", " ", text)
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
 
     return text.strip()
 
 
-def safe_int(value, default=0):
+def safe_int(
+    value,
+    default=0
+):
+
     try:
         return int(value)
+
     except Exception:
         return default
 
 
-def safe_float(value, default=0):
+def safe_float(
+    value,
+    default=0
+):
+
     try:
         return float(value)
+
     except Exception:
         return default
 
 
 def hash_text(text):
+
     return hashlib.sha256(
-        clean_text(text).encode("utf-8")
+        clean_text(text).encode(
+            "utf-8"
+        )
     ).hexdigest()
 
 
 # ============================================================
-# POSTED
+# POSTED DATABASE
 # ============================================================
 
 def load_posted():
-    if not os.path.exists(POSTED_FILE):
+
+    if not os.path.exists(
+        POSTED_FILE
+    ):
         return []
 
     try:
+
         with open(
             POSTED_FILE,
             "r",
             encoding="utf-8"
         ) as f:
+
             data = json.load(f)
 
-        if isinstance(data, list):
+        if isinstance(
+            data,
+            list
+        ):
             return data
 
-        if isinstance(data, dict):
+        if isinstance(
+            data,
+            dict
+        ):
             return data.get(
                 "posted",
                 []
             )
 
     except Exception as e:
+
         print(
-            f"WARNING failed to load posted.json: {e}"
+            f"WARNING failed to load "
+            f"posted.json: {e}"
         )
 
     return []
 
 
 def save_posted(posted):
-    posted = posted[-MAX_POSTED:]
+
+    posted = posted[
+        -MAX_POSTED:
+    ]
 
     try:
+
         with open(
             POSTED_FILE,
             "w",
             encoding="utf-8"
         ) as f:
+
             json.dump(
                 posted,
                 f,
@@ -188,35 +226,47 @@ def save_posted(posted):
             )
 
     except Exception as e:
+
         print(
-            f"ERROR saving posted.json: {e}"
+            f"ERROR saving "
+            f"posted.json: {e}"
         )
 
 
 # ============================================================
-# STATE
+# BOT STATE
 # ============================================================
 
 def load_state():
-    if not os.path.exists(STATE_FILE):
+
+    if not os.path.exists(
+        STATE_FILE
+    ):
         return {
             "run_count": 0
         }
 
     try:
+
         with open(
             STATE_FILE,
             "r",
             encoding="utf-8"
         ) as f:
+
             data = json.load(f)
 
-        if isinstance(data, dict):
+        if isinstance(
+            data,
+            dict
+        ):
             return data
 
     except Exception as e:
+
         print(
-            f"WARNING failed to load bot_state.json: {e}"
+            f"WARNING failed to load "
+            f"bot_state.json: {e}"
         )
 
     return {
@@ -225,12 +275,15 @@ def load_state():
 
 
 def save_state(state):
+
     try:
+
         with open(
             STATE_FILE,
             "w",
             encoding="utf-8"
         ) as f:
+
             json.dump(
                 state,
                 f,
@@ -239,24 +292,31 @@ def save_state(state):
             )
 
     except Exception as e:
+
         print(
-            f"WARNING failed to save bot_state.json: {e}"
+            f"WARNING failed to save "
+            f"bot_state.json: {e}"
         )
 
 
 def increase_run_counter():
+
     state = load_state()
 
-    state["run_count"] = safe_int(
-        state.get(
-            "run_count",
-            0
-        )
-    ) + 1
+    state["run_count"] = (
+        safe_int(
+            state.get(
+                "run_count",
+                0
+            )
+        ) + 1
+    )
 
-    state["last_run"] = datetime.now(
-        timezone.utc
-    ).isoformat()
+    state["last_run"] = (
+        datetime.now(
+            timezone.utc
+        ).isoformat()
+    )
 
     save_state(state)
 
@@ -268,6 +328,7 @@ def increase_run_counter():
 # ============================================================
 
 def check_config():
+
     missing = []
 
     if not GOOGLE_MAPS_API_KEY:
@@ -291,11 +352,13 @@ def check_config():
         )
 
     if missing:
+
         print(
             "ERROR Missing environment variables:"
         )
 
         for item in missing:
+
             print(
                 f"- {item}"
             )
@@ -313,14 +376,19 @@ def search_places(
     query,
     location
 ):
+
     url = (
         f"{GOOGLE_PLACES_BASE_URL}"
         "/places:searchText"
     )
 
     headers = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+
+        "Content-Type":
+            "application/json",
+
+        "X-Goog-Api-Key":
+            GOOGLE_MAPS_API_KEY,
 
         "X-Goog-FieldMask": (
             "places.id,"
@@ -338,19 +406,30 @@ def search_places(
     }
 
     payload = {
-        "textQuery": (
-            f"{query} in {location}"
-        ),
-        "languageCode": "en",
-        "regionCode": "MY",
-        "pageSize": MAX_SEARCH_RESULTS
+
+        "textQuery":
+            f"{query} in {location}",
+
+        "languageCode":
+            "en",
+
+        "regionCode":
+            "MY",
+
+        "pageSize":
+            MAX_SEARCH_RESULTS
     }
 
     try:
+
         response = requests.post(
+
             url,
+
             headers=headers,
+
             json=payload,
+
             timeout=REQUEST_TIMEOUT
         )
 
@@ -360,6 +439,7 @@ def search_places(
         )
 
         if response.status_code != 200:
+
             print(
                 "Google Places error:"
             )
@@ -385,39 +465,53 @@ def search_places(
         return places
 
     except Exception as e:
+
         print(
-            f"ERROR Google Places request failed: {e}"
+            "ERROR Google Places "
+            f"request failed: {e}"
         )
 
         return []
 
 
 # ============================================================
-# GOOGLE PHOTO DOWNLOAD
+# GOOGLE PHOTO
 # ============================================================
 
 def download_google_photo(
     photo_name
 ):
+
     if not photo_name:
         return None
 
     url = (
-        f"{GOOGLE_PLACES_BASE_URL}/"
-        f"{photo_name}/media"
+        f"{GOOGLE_PLACES_BASE_URL}"
+        f"/{photo_name}/media"
     )
 
     params = {
-        "key": GOOGLE_MAPS_API_KEY,
-        "maxWidthPx": 1200,
-        "maxHeightPx": 900
+
+        "key":
+            GOOGLE_MAPS_API_KEY,
+
+        "maxWidthPx":
+            1200,
+
+        "maxHeightPx":
+            900
     }
 
     try:
+
         response = requests.get(
+
             url,
+
             params=params,
+
             timeout=REQUEST_TIMEOUT,
+
             allow_redirects=True
         )
 
@@ -427,6 +521,7 @@ def download_google_photo(
         )
 
         if response.status_code != 200:
+
             print(
                 "Google Photo error:"
             )
@@ -449,13 +544,15 @@ def download_google_photo(
         if not content_type.startswith(
             "image/"
         ):
+
             print(
-                "WARNING Google Photo did not "
-                "return an image."
+                "WARNING Google Photo "
+                "did not return an image."
             )
 
             print(
-                f"Content-Type: {content_type}"
+                f"Content-Type: "
+                f"{content_type}"
             )
 
             return None
@@ -468,24 +565,26 @@ def download_google_photo(
         return response.content
 
     except Exception as e:
+
         print(
-            f"ERROR Google Photo download failed: {e}"
+            "ERROR Google Photo "
+            f"download failed: {e}"
         )
 
         return None
 
 
-# ============================================================
-# EXTRACT PHOTO
-# ============================================================
+def extract_photo_bytes(
+    place
+):
 
-def extract_photo_bytes(place):
     photos = place.get(
         "photos",
         []
     )
 
     if not photos:
+
         print(
             "No Google Photos found."
         )
@@ -500,6 +599,7 @@ def extract_photo_bytes(place):
     )
 
     if not photo_name:
+
         print(
             "Google photo name missing."
         )
@@ -507,7 +607,8 @@ def extract_photo_bytes(place):
         return None
 
     print(
-        f"Google photo: {photo_name}"
+        f"Google photo: "
+        f"{photo_name}"
     )
 
     return download_google_photo(
@@ -519,7 +620,10 @@ def extract_photo_bytes(place):
 # OPENING HOURS
 # ============================================================
 
-def extract_opening_hours(place):
+def extract_opening_hours(
+    place
+):
+
     opening = place.get(
         "regularOpeningHours",
         {}
@@ -543,38 +647,87 @@ def extract_opening_hours(place):
         return []
 
     return [
+
         clean_text(item)
+
         for item in descriptions
+
         if clean_text(item)
     ]
 
 
-# ============================================================
-# FORMAT OPENING HOURS
-# ============================================================
-
 def format_opening_hours(
-    hours
+    hours,
+    language="zh"
 ):
-    if not hours:
-        return (
-            "暂无资料 / "
-            "Maklumat tidak tersedia"
-        )
 
-    day_map = {
-        "Monday": "星期一 / Isnin",
-        "Tuesday": "星期二 / Selasa",
-        "Wednesday": "星期三 / Rabu",
-        "Thursday": "星期四 / Khamis",
-        "Friday": "星期五 / Jumaat",
-        "Saturday": "星期六 / Sabtu",
-        "Sunday": "星期日 / Ahad"
+    if not hours:
+
+        if language == "zh":
+            return "暂无资料"
+
+        return "Maklumat tidak tersedia"
+
+    day_map_zh = {
+
+        "Monday":
+            "星期一",
+
+        "Tuesday":
+            "星期二",
+
+        "Wednesday":
+            "星期三",
+
+        "Thursday":
+            "星期四",
+
+        "Friday":
+            "星期五",
+
+        "Saturday":
+            "星期六",
+
+        "Sunday":
+            "星期日"
     }
+
+    day_map_ms = {
+
+        "Monday":
+            "Isnin",
+
+        "Tuesday":
+            "Selasa",
+
+        "Wednesday":
+            "Rabu",
+
+        "Thursday":
+            "Khamis",
+
+        "Friday":
+            "Jumaat",
+
+        "Saturday":
+            "Sabtu",
+
+        "Sunday":
+            "Ahad"
+    }
+
+    if language == "zh":
+
+        day_map = day_map_zh
+
+    else:
+
+        day_map = day_map_ms
 
     result = []
 
     for item in hours:
+
         item = clean_text(item)
 
         if not item:
@@ -589,6 +742,7 @@ def format_opening_hours(
             continue
 
         day = parts[0].strip()
+
         time_text = parts[1].strip()
 
         day_name = day_map.get(
@@ -597,14 +751,16 @@ def format_opening_hours(
         )
 
         result.append(
-            f"{day_name}: {time_text}"
+            f"{day_name}: "
+            f"{time_text}"
         )
 
     if not result:
-        return (
-            "暂无资料 / "
-            "Maklumat tidak tersedia"
-        )
+
+        if language == "zh":
+            return "暂无资料"
+
+        return "Maklumat tidak tersedia"
 
     return "\n".join(
         result
@@ -618,12 +774,23 @@ def format_opening_hours(
 def price_level_text(
     price_level
 ):
+
     mapping = {
-        "PRICE_LEVEL_FREE": "Free",
-        "PRICE_LEVEL_INEXPENSIVE": "RM10–20",
-        "PRICE_LEVEL_MODERATE": "RM20–50",
-        "PRICE_LEVEL_EXPENSIVE": "RM50–100",
-        "PRICE_LEVEL_VERY_EXPENSIVE": "RM100+"
+
+        "PRICE_LEVEL_FREE":
+            "Free",
+
+        "PRICE_LEVEL_INEXPENSIVE":
+            "RM10–20",
+
+        "PRICE_LEVEL_MODERATE":
+            "RM20–50",
+
+        "PRICE_LEVEL_EXPENSIVE":
+            "RM50–100",
+
+        "PRICE_LEVEL_VERY_EXPENSIVE":
+            "RM100+"
     }
 
     return mapping.get(
@@ -636,7 +803,10 @@ def price_level_text(
 # PLACE ID
 # ============================================================
 
-def get_place_id(place):
+def get_place_id(
+    place
+):
+
     value = clean_text(
         place.get(
             "id",
@@ -675,13 +845,14 @@ def get_place_id(place):
 
 
 # ============================================================
-# SELECT PLACE
+# SELECT RESTAURANT
 # ============================================================
 
 def select_place(
     places,
     posted
 ):
+
     posted_set = set(
         posted
     )
@@ -695,8 +866,25 @@ def select_place(
         )
 
         if pid in posted_set:
+
+            display_name = (
+                place.get(
+                    "displayName",
+                    {}
+                )
+                or {}
+            )
+
+            name = clean_text(
+                display_name.get(
+                    "text",
+                    ""
+                )
+            )
+
             print(
-                "Skipping already posted place."
+                "Skipping already "
+                f"posted place: {name}"
             )
 
             continue
@@ -749,6 +937,7 @@ def select_place(
             continue
 
         if not photos:
+
             print(
                 f"Skipping without photo: "
                 f"{name}"
@@ -757,6 +946,7 @@ def select_place(
             continue
 
         if rating < 4.0:
+
             print(
                 f"Skipping low rating: "
                 f"{name} ({rating})"
@@ -765,6 +955,7 @@ def select_place(
             continue
 
         if review_count < 20:
+
             print(
                 f"Skipping low review count: "
                 f"{name} ({review_count})"
@@ -773,7 +964,9 @@ def select_place(
             continue
 
         score = (
+
             rating * 100
+
             + min(
                 review_count,
                 5000
@@ -788,6 +981,7 @@ def select_place(
         )
 
     if not candidates:
+
         print(
             "No suitable food place found."
         )
@@ -795,13 +989,16 @@ def select_place(
         return None
 
     candidates.sort(
+
         key=lambda item: item[0],
+
         reverse=True
     )
 
     selected = candidates[0][1]
 
     name = clean_text(
+
         (
             selected.get(
                 "displayName",
@@ -815,7 +1012,8 @@ def select_place(
     )
 
     print(
-        f"Selected restaurant: {name}"
+        f"Selected restaurant: "
+        f"{name}"
     )
 
     return selected
@@ -828,6 +1026,7 @@ def select_place(
 def build_food_data(
     place
 ):
+
     display_name = (
         place.get(
             "displayName",
@@ -906,18 +1105,38 @@ def build_food_data(
     )
 
     return {
-        "id": get_place_id(place),
-        "name": name,
-        "address": address,
-        "rating": rating,
-        "review_count": review_count,
-        "price_level": price_level_text(
-            price_level
-        ),
-        "category": category,
-        "maps_url": maps_url,
-        "opening_hours": opening_hours,
-        "photo_bytes": photo_bytes
+
+        "id":
+            get_place_id(place),
+
+        "name":
+            name,
+
+        "address":
+            address,
+
+        "rating":
+            rating,
+
+        "review_count":
+            review_count,
+
+        "price_level":
+            price_level_text(
+                price_level
+            ),
+
+        "category":
+            category,
+
+        "maps_url":
+            maps_url,
+
+        "opening_hours":
+            opening_hours,
+
+        "photo_bytes":
+            photo_bytes
     }
 
 
@@ -928,6 +1147,7 @@ def build_food_data(
 def build_food_prompt(
     food
 ):
+
     return f"""
 You are a professional Malaysian food editor.
 
@@ -1008,6 +1228,7 @@ FORMAT:
 def extract_json(
     text
 ):
+
     if not text:
         return None
 
@@ -1027,6 +1248,7 @@ def extract_json(
     )
 
     try:
+
         return json.loads(
             text
         )
@@ -1047,28 +1269,36 @@ def extract_json(
         or end == -1
         or end <= start
     ):
+
         return None
 
     try:
+
         return json.loads(
-            text[start:end + 1]
+            text[
+                start:
+                end + 1
+            ]
         )
 
     except Exception as e:
+
         print(
-            f"ERROR JSON extraction failed: {e}"
+            f"ERROR JSON extraction "
+            f"failed: {e}"
         )
 
         return None
 
 
 # ============================================================
-# VALIDATE AI
+# AI VALIDATION
 # ============================================================
 
 def validate_ai(
     data
 ):
+
     if not isinstance(
         data,
         dict
@@ -1076,15 +1306,22 @@ def validate_ai(
         return False
 
     required = [
+
         "chinese_title",
+
         "malay_title",
+
         "chinese_body",
+
         "malay_body",
+
         "chinese_why",
+
         "malay_why"
     ]
 
     for key in required:
+
         value = clean_text(
             data.get(
                 key,
@@ -1093,9 +1330,10 @@ def validate_ai(
         )
 
         if not value:
+
             print(
-                f"ERROR Missing AI field: "
-                f"{key}"
+                f"ERROR Missing "
+                f"AI field: {key}"
             )
 
             return False
@@ -1109,21 +1347,25 @@ def validate_ai(
         must_try,
         list
     ):
+
         return False
 
     return True
 
 
 # ============================================================
-# OPENAI
+# OPENAI GENERATION
 # ============================================================
 
 def generate_ai_content(
     food
 ):
+
     if openai_client is None:
+
         print(
-            "ERROR OpenAI client not initialized."
+            "ERROR OpenAI client "
+            "not initialized."
         )
 
         return None
@@ -1133,30 +1375,41 @@ def generate_ai_content(
     )
 
     try:
+
         response = (
+
             openai_client
+
             .chat
+
             .completions
+
             .create(
+
                 model=OPENAI_MODEL,
 
                 messages=[
+
                     {
-                        "role": "user",
-                        "content": prompt
+
+                        "role":
+                            "user",
+
+                        "content":
+                            prompt
                     }
                 ],
 
-                max_completion_tokens=(
-                    AI_MAX_COMPLETION_TOKENS
-                ),
+                max_completion_tokens=
+                    AI_MAX_COMPLETION_TOKENS,
 
-                reasoning_effort=(
-                    AI_REASONING_EFFORT
-                ),
+                reasoning_effort=
+                    AI_REASONING_EFFORT,
 
                 response_format={
-                    "type": "json_object"
+
+                    "type":
+                        "json_object"
                 }
             )
         )
@@ -1177,14 +1430,17 @@ def generate_ai_content(
         content = ""
 
         if choice.message:
+
             content = (
                 choice.message.content
                 or ""
             )
 
         if not content:
+
             print(
-                "ERROR OpenAI returned empty content."
+                "ERROR OpenAI returned "
+                "empty content."
             )
 
             return None
@@ -1193,8 +1449,10 @@ def generate_ai_content(
             "length",
             "max_tokens"
         ):
+
             print(
-                "ERROR OpenAI output incomplete."
+                "ERROR OpenAI output "
+                "incomplete."
             )
 
             return None
@@ -1204,6 +1462,7 @@ def generate_ai_content(
         )
 
         if not data:
+
             print(
                 "ERROR Invalid AI JSON."
             )
@@ -1213,8 +1472,10 @@ def generate_ai_content(
         if not validate_ai(
             data
         ):
+
             print(
-                "ERROR AI validation failed."
+                "ERROR AI validation "
+                "failed."
             )
 
             return None
@@ -1226,29 +1487,61 @@ def generate_ai_content(
         return data
 
     except Exception as e:
+
         print(
-            f"ERROR OpenAI request failed: {e}"
+            "ERROR OpenAI request "
+            f"failed: {e}"
         )
 
         return None
 
 
 # ============================================================
-# TELEGRAM URL
+# TELEGRAM
 # ============================================================
 
 def telegram_api_url(
     method
 ):
+
     return (
+
         "https://api.telegram.org/"
+
         f"bot{TELEGRAM_BOT_TOKEN}/"
+
         f"{method}"
     )
 
 
+def build_maps_button(
+    maps_url
+):
+
+    if not maps_url:
+        return None
+
+    return json.dumps({
+
+        "inline_keyboard": [
+
+            [
+
+                {
+
+                    "text":
+                        "👉 Google Maps",
+
+                    "url":
+                        maps_url
+                }
+            ]
+        ]
+    })
+
+
 # ============================================================
-# TELEGRAM PHOTO
+# SEND PHOTO
 # ============================================================
 
 def send_telegram_photo(
@@ -1256,6 +1549,7 @@ def send_telegram_photo(
     caption,
     maps_url
 ):
+
     url = telegram_api_url(
         "sendPhoto"
     )
@@ -1265,36 +1559,51 @@ def send_telegram_photo(
     ]
 
     data = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "caption": caption,
-        "parse_mode": "HTML"
+
+        "chat_id":
+            TELEGRAM_CHAT_ID,
+
+        "caption":
+            caption,
+
+        "parse_mode":
+            "HTML"
     }
 
-    if maps_url:
-        data["reply_markup"] = json.dumps({
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "👉 Google Maps",
-                        "url": maps_url
-                    }
-                ]
-            ]
-        })
+    reply_markup = (
+        build_maps_button(
+            maps_url
+        )
+    )
+
+    if reply_markup:
+
+        data[
+            "reply_markup"
+        ] = reply_markup
 
     files = {
+
         "photo": (
+
             "restaurant.jpg",
+
             photo_bytes,
+
             "image/jpeg"
         )
     }
 
     try:
+
         response = requests.post(
+
             url,
+
             data=data,
+
             files=files,
+
             timeout=REQUEST_TIMEOUT
         )
 
@@ -1304,6 +1613,7 @@ def send_telegram_photo(
         )
 
         if response.status_code != 200:
+
             print(
                 "Telegram photo error:"
             )
@@ -1317,53 +1627,68 @@ def send_telegram_photo(
         result = response.json()
 
         return bool(
-            result.get("ok")
+            result.get(
+                "ok"
+            )
         )
 
     except Exception as e:
+
         print(
-            f"ERROR Telegram photo failed: {e}"
+            "ERROR Telegram photo "
+            f"failed: {e}"
         )
 
         return False
 
 
 # ============================================================
-# TELEGRAM TEXT
+# SEND TEXT
 # ============================================================
 
 def send_telegram_text(
     text,
     maps_url
 ):
+
     url = telegram_api_url(
         "sendMessage"
     )
 
     data = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": text[
-            :TELEGRAM_TEXT_LIMIT
-        ],
-        "parse_mode": "HTML"
+
+        "chat_id":
+            TELEGRAM_CHAT_ID,
+
+        "text":
+            text[
+                :TELEGRAM_TEXT_LIMIT
+            ],
+
+        "parse_mode":
+            "HTML"
     }
 
-    if maps_url:
-        data["reply_markup"] = json.dumps({
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "👉 Google Maps",
-                        "url": maps_url
-                    }
-                ]
-            ]
-        })
+    reply_markup = (
+        build_maps_button(
+            maps_url
+        )
+    )
+
+    if reply_markup:
+
+        data[
+            "reply_markup"
+        ] = reply_markup
 
     try:
+
         response = requests.post(
+
             url,
+
             data=data,
+
             timeout=REQUEST_TIMEOUT
         )
 
@@ -1373,6 +1698,7 @@ def send_telegram_text(
         )
 
         if response.status_code != 200:
+
             print(
                 response.text[:2000]
             )
@@ -1380,12 +1706,16 @@ def send_telegram_text(
             return False
 
         return bool(
-            response.json().get("ok")
+            response.json().get(
+                "ok"
+            )
         )
 
     except Exception as e:
+
         print(
-            f"ERROR Telegram text failed: {e}"
+            "ERROR Telegram text "
+            f"failed: {e}"
         )
 
         return False
@@ -1399,10 +1729,16 @@ def build_chinese_message(
     food,
     ai
 ):
-    hours_text = format_opening_hours(
-        food.get(
-            "opening_hours",
-            []
+
+    hours_text = (
+        format_opening_hours(
+
+            food.get(
+                "opening_hours",
+                []
+            ),
+
+            "zh"
         )
     )
 
@@ -1415,25 +1751,36 @@ def build_chinese_message(
         must_try,
         list
     ):
+
         must_try = []
 
     must_try = [
+
         clean_text(item)
+
         for item in must_try
+
         if clean_text(item)
+
     ][:4]
 
     if must_try:
+
         must_try_text = "\n".join(
+
             f"• {item}"
+
             for item in must_try
         )
+
     else:
+
         must_try_text = (
             "• 暂无足够资料提供具体推荐"
         )
 
     return (
+
         "🇲🇾 <b>MYBUZZ FOOD</b>\n\n"
 
         "🔥 <b>今日美食推荐</b>\n\n"
@@ -1452,6 +1799,7 @@ def build_chinese_message(
         f"📍 {food['address']}\n\n"
 
         "🍴 <b>推荐必点</b>\n"
+
         f"{must_try_text}\n\n"
 
         "🔥 <b>为什么推荐？</b>\n\n"
@@ -1476,10 +1824,16 @@ def build_malay_message(
     food,
     ai
 ):
-    hours_text = format_opening_hours(
-        food.get(
-            "opening_hours",
-            []
+
+    hours_text = (
+        format_opening_hours(
+
+            food.get(
+                "opening_hours",
+                []
+            ),
+
+            "ms"
         )
     )
 
@@ -1492,25 +1846,36 @@ def build_malay_message(
         must_try,
         list
     ):
+
         must_try = []
 
     must_try = [
+
         clean_text(item)
+
         for item in must_try
+
         if clean_text(item)
+
     ][:4]
 
     if must_try:
+
         must_try_text = "\n".join(
+
             f"• {item}"
+
             for item in must_try
         )
+
     else:
+
         must_try_text = (
             "• Tiada maklumat mencukupi"
         )
 
     return (
+
         "🇲🇾 <b>MYBUZZ FOOD</b>\n\n"
 
         "🔥 <b>Cadangan Makanan Hari Ini</b>\n\n"
@@ -1529,6 +1894,7 @@ def build_malay_message(
         f"📍 {food['address']}\n\n"
 
         "🍴 <b>Wajib Cuba</b>\n"
+
         f"{must_try_text}\n\n"
 
         "🔥 <b>Mengapa Disyorkan?</b>\n\n"
@@ -1551,11 +1917,21 @@ def build_malay_message(
 
 def main():
 
-    print("=" * 60)
-    print("MYBUZZ FOOD BOT")
-    print("=" * 60)
+    print(
+        "=" * 60
+    )
 
-    run_count = increase_run_counter()
+    print(
+        "MYBUZZ FOOD BOT"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    run_count = (
+        increase_run_counter()
+    )
 
     print(
         f"Run #{run_count}"
@@ -1571,27 +1947,35 @@ def main():
         f"{len(posted)} records"
     )
 
-    # --------------------------------------------------------
-    # SEARCH ROTATION
-    # --------------------------------------------------------
-
     location_index = (
+
         (run_count - 1)
-        % len(SEARCH_LOCATIONS)
+
+        % len(
+            SEARCH_LOCATIONS
+        )
     )
 
     query_index = (
+
         (run_count - 1)
-        % len(FOOD_QUERIES)
+
+        % len(
+            FOOD_QUERIES
+        )
     )
 
-    location = SEARCH_LOCATIONS[
-        location_index
-    ]
+    location = (
+        SEARCH_LOCATIONS[
+            location_index
+        ]
+    )
 
-    query = FOOD_QUERIES[
-        query_index
-    ]
+    query = (
+        FOOD_QUERIES[
+            query_index
+        ]
+    )
 
     print(
         f"Food search: {query}"
@@ -1601,25 +1985,18 @@ def main():
         f"Location: {location}"
     )
 
-    # --------------------------------------------------------
-    # SEARCH GOOGLE
-    # --------------------------------------------------------
-
     places = search_places(
         query,
         location
     )
 
     if not places:
+
         print(
             "No places returned."
         )
 
         return
-
-    # --------------------------------------------------------
-    # SELECT
-    # --------------------------------------------------------
 
     place = select_place(
         places,
@@ -1628,10 +2005,6 @@ def main():
 
     if not place:
         return
-
-    # --------------------------------------------------------
-    # BUILD DATA
-    # --------------------------------------------------------
 
     food = build_food_data(
         place
@@ -1662,39 +2035,36 @@ def main():
         f"{food['address']}"
     )
 
-    # --------------------------------------------------------
-    # PHOTO
-    # --------------------------------------------------------
-
-    photo_bytes = food.get(
-        "photo_bytes"
+    photo_bytes = (
+        food.get(
+            "photo_bytes"
+        )
     )
 
     if not photo_bytes:
+
         print(
-            "ERROR No usable restaurant photo."
+            "ERROR No usable "
+            "restaurant photo."
         )
 
         return
-
-    # --------------------------------------------------------
-    # AI
-    # --------------------------------------------------------
 
     ai = generate_ai_content(
         food
     )
 
     if not ai:
+
         print(
             "AI failed."
         )
 
         return
 
-    # --------------------------------------------------------
-    # CHINESE
-    # --------------------------------------------------------
+    # ========================================================
+    # CHINESE MESSAGE
+    # ========================================================
 
     chinese_message = (
         build_chinese_message(
@@ -1708,15 +2078,22 @@ def main():
         f"{len(chinese_message)}"
     )
 
-    sent_chinese = send_telegram_photo(
-        photo_bytes,
-        chinese_message,
-        food["maps_url"]
+    sent_chinese = (
+        send_telegram_photo(
+
+            photo_bytes,
+
+            chinese_message,
+
+            food["maps_url"]
+        )
     )
 
     if not sent_chinese:
+
         print(
-            "ERROR Chinese message failed."
+            "ERROR Chinese "
+            "message failed."
         )
 
         return
@@ -1725,9 +2102,14 @@ def main():
         "Chinese message sent."
     )
 
-    # --------------------------------------------------------
-    # MALAY
-    # --------------------------------------------------------
+    # ========================================================
+    # MALAY MESSAGE
+    # ========================================================
+    #
+    # IMPORTANT:
+    # Malay message also uses the SAME restaurant photo.
+    #
+    # ========================================================
 
     malay_message = (
         build_malay_message(
@@ -1741,14 +2123,22 @@ def main():
         f"{len(malay_message)}"
     )
 
-    sent_malay = send_telegram_text(
-        malay_message,
-        food["maps_url"]
+    sent_malay = (
+        send_telegram_photo(
+
+            photo_bytes,
+
+            malay_message,
+
+            food["maps_url"]
+        )
     )
 
     if not sent_malay:
+
         print(
-            "ERROR Malay message failed."
+            "ERROR Malay "
+            "message failed."
         )
 
         return
@@ -1757,9 +2147,9 @@ def main():
         "Malay message sent."
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAVE POSTED
-    # --------------------------------------------------------
+    # ========================================================
 
     posted.append(
         food["id"]
@@ -1773,13 +2163,21 @@ def main():
         "Food post successful."
     )
 
-    print("=" * 60)
-    print("MYBUZZ FOOD BOT FINISHED")
-    print("=" * 60)
+    print(
+        "=" * 60
+    )
+
+    print(
+        "MYBUZZ FOOD BOT FINISHED"
+    )
+
+    print(
+        "=" * 60
+    )
 
 
 # ============================================================
-# ENTRY
+# RUN
 # ============================================================
 
 if __name__ == "__main__":
