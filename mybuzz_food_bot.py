@@ -2,6 +2,7 @@ import os
 import re
 import json
 import hashlib
+import html
 import requests
 from datetime import datetime, timezone
 from openai import OpenAI
@@ -20,7 +21,7 @@ REQUEST_TIMEOUT = 20
 MAX_SEARCH_RESULTS = 10
 MAX_POSTED = 1000
 
-AI_MAX_COMPLETION_TOKENS = 1200
+AI_MAX_COMPLETION_TOKENS = 900
 AI_REASONING_EFFORT = "low"
 
 TELEGRAM_CAPTION_LIMIT = 1024
@@ -156,6 +157,14 @@ def hash_text(text):
             "utf-8"
         )
     ).hexdigest()
+
+
+def telegram_html(text):
+
+    return html.escape(
+        clean_text(text),
+        quote=False
+    )
 
 
 # ============================================================
@@ -720,9 +729,15 @@ def format_opening_hours(
 
         day_map = day_map_zh
 
+        # 中文星期最长为 3 个汉字
+        width = 3
+
     else:
 
         day_map = day_map_ms
+
+        # Malay 使用等宽字体时统一到 7 字符
+        width = 7
 
     result = []
 
@@ -750,9 +765,11 @@ def format_opening_hours(
             day
         )
 
+        # 使用固定宽度。
+        # 后面会放进 <pre> 等宽字体，
+        # 所以 — 可以真正垂直对齐。
         result.append(
-            f"{day_name:<9}: "
-            f"{time_text}"
+            f"{day_name:<{width}} — {time_text}"
         )
 
     if not result:
@@ -1151,7 +1168,8 @@ def build_food_prompt(
     return f"""
 You are a professional Malaysian food editor.
 
-Create a bilingual Malaysian food recommendation for Telegram.
+Create short bilingual recommendation reasons
+for a Malaysian food Telegram channel.
 
 FACTS:
 
@@ -1181,42 +1199,32 @@ IMPORTANT RULES:
 4. Never invent prices.
 5. Never invent opening hours.
 6. Never invent awards.
-7. Never claim a restaurant is viral or trending unless supplied data proves it.
+7. Never claim viral, trending or popular status unless supplied facts prove it.
 8. Never change the restaurant name.
 9. Never change the rating.
 10. Never change the review count.
 11. Never change the address.
-12. Chinese and Malay must describe the same facts.
+12. Chinese and Malay must describe exactly the same facts.
 13. Use Malaysian Chinese.
 14. Use Malaysian Malay, NOT Indonesian Malay.
-15. Keep the writing concise and natural.
-16. The "why recommended" section must only use factual information.
-17. If there is not enough information to recommend specific dishes, return an empty must_try list.
+15. Keep both answers very short.
+16. The recommendation reason must only use factual information.
+17. Do not repeat the rating, review count, price or address as a long paragraph.
+18. Do not write a general restaurant introduction.
+19. Do not write menu recommendations.
 
-Create:
+Create ONLY:
 
-- Chinese title
-- Malay title
-- Chinese introduction
-- Malay introduction
 - Chinese why recommended
 - Malay why recommended
-- must_try list
-
-The must_try list should only contain dishes if they can be safely inferred from reliable information supplied in the prompt.
 
 Return ONLY valid JSON.
 
 FORMAT:
 
 {{
-    "chinese_title": "",
-    "malay_title": "",
-    "chinese_body": "",
-    "malay_body": "",
     "chinese_why": "",
-    "malay_why": "",
-    "must_try": []
+    "malay_why": ""
 }}
 """.strip()
 
@@ -1307,14 +1315,6 @@ def validate_ai(
 
     required = [
 
-        "chinese_title",
-
-        "malay_title",
-
-        "chinese_body",
-
-        "malay_body",
-
         "chinese_why",
 
         "malay_why"
@@ -1337,18 +1337,6 @@ def validate_ai(
             )
 
             return False
-
-    must_try = data.get(
-        "must_try",
-        []
-    )
-
-    if not isinstance(
-        must_try,
-        list
-    ):
-
-        return False
 
     return True
 
@@ -1554,9 +1542,16 @@ def send_telegram_photo(
         "sendPhoto"
     )
 
-    caption = caption[
-        :TELEGRAM_CAPTION_LIMIT
-    ]
+    if len(caption) > TELEGRAM_CAPTION_LIMIT:
+
+        print(
+            "WARNING Caption exceeds "
+            f"{TELEGRAM_CAPTION_LIMIT} characters."
+        )
+
+        caption = caption[
+            :TELEGRAM_CAPTION_LIMIT
+        ]
 
     data = {
 
@@ -1643,85 +1638,6 @@ def send_telegram_photo(
 
 
 # ============================================================
-# SEND TEXT
-# ============================================================
-
-def send_telegram_text(
-    text,
-    maps_url
-):
-
-    url = telegram_api_url(
-        "sendMessage"
-    )
-
-    data = {
-
-        "chat_id":
-            TELEGRAM_CHAT_ID,
-
-        "text":
-            text[
-                :TELEGRAM_TEXT_LIMIT
-            ],
-
-        "parse_mode":
-            "HTML"
-    }
-
-    reply_markup = (
-        build_maps_button(
-            maps_url
-        )
-    )
-
-    if reply_markup:
-
-        data[
-            "reply_markup"
-        ] = reply_markup
-
-    try:
-
-        response = requests.post(
-
-            url,
-
-            data=data,
-
-            timeout=REQUEST_TIMEOUT
-        )
-
-        print(
-            f"Telegram text HTTP "
-            f"{response.status_code}"
-        )
-
-        if response.status_code != 200:
-
-            print(
-                response.text[:2000]
-            )
-
-            return False
-
-        return bool(
-            response.json().get(
-                "ok"
-            )
-        )
-
-    except Exception as e:
-
-        print(
-            "ERROR Telegram text "
-            f"failed: {e}"
-        )
-
-        return False
-
-
-# ============================================================
 # CHINESE MESSAGE
 # ============================================================
 
@@ -1742,50 +1658,35 @@ def build_chinese_message(
         )
     )
 
-    must_try = ai.get(
-        "must_try",
-        []
+    name = telegram_html(
+        food["name"]
     )
 
-    if not isinstance(
-        must_try,
-        list
-    ):
+    address = telegram_html(
+        food["address"]
+    )
 
-        must_try = []
+    price = telegram_html(
+        food["price_level"]
+    )
 
-    must_try = [
+    why = telegram_html(
+        ai["chinese_why"]
+    )
 
-        clean_text(item)
+    # 营业时间使用 <pre>
+    # 保证星期和 — 真正对齐
+    hours_html = (
+        f"<pre>{html.escape(hours_text)}</pre>"
+    )
 
-        for item in must_try
-
-        if clean_text(item)
-
-    ][:4]
-
-    if must_try:
-
-        must_try_text = "\n".join(
-
-            f"• {item}"
-
-            for item in must_try
-        )
-
-    else:
-
-        must_try_text = (
-            "• 暂无足够资料提供具体推荐"
-        )
-
-    return (
+    message = (
 
         "🇲🇾 <b>MYBUZZ FOOD</b>\n\n"
 
         "🔥 <b>今日美食推荐</b>\n\n"
 
-        f"🍽️ <b>{food['name']}</b>\n\n"
+        f"🍽️ <b>{name}</b>\n\n"
 
         f"⭐ Rating: "
         f"{food['rating']:.1f}/5\n"
@@ -1794,26 +1695,20 @@ def build_chinese_message(
         f"{food['review_count']:,}\n"
 
         f"💰 人均："
-        f"{food['price_level']}\n"
+        f"{price}\n"
 
-        f"📍 {food['address']}\n\n"
-
-        "🍴 <b>推荐必点</b>\n"
-
-        f"{must_try_text}\n\n"
+        f"📍 {address}\n\n"
 
         "🔥 <b>为什么推荐？</b>\n\n"
 
-        f"{clean_text(ai['chinese_why'])}\n\n"
-
-        "🇨🇳 <b>中文介绍</b>\n\n"
-
-        f"{clean_text(ai['chinese_body'])}\n\n"
+        f"{why}\n\n"
 
         "🕐 <b>营业时间</b>\n"
 
-        f"{hours_text}"
+        f"{hours_html}"
     )
+
+    return message
 
 
 # ============================================================
@@ -1837,50 +1732,35 @@ def build_malay_message(
         )
     )
 
-    must_try = ai.get(
-        "must_try",
-        []
+    name = telegram_html(
+        food["name"]
     )
 
-    if not isinstance(
-        must_try,
-        list
-    ):
+    address = telegram_html(
+        food["address"]
+    )
 
-        must_try = []
+    price = telegram_html(
+        food["price_level"]
+    )
 
-    must_try = [
+    why = telegram_html(
+        ai["malay_why"]
+    )
 
-        clean_text(item)
+    # 营业时间使用 <pre>
+    # 保证星期和 — 真正对齐
+    hours_html = (
+        f"<pre>{html.escape(hours_text)}</pre>"
+    )
 
-        for item in must_try
-
-        if clean_text(item)
-
-    ][:4]
-
-    if must_try:
-
-        must_try_text = "\n".join(
-
-            f"• {item}"
-
-            for item in must_try
-        )
-
-    else:
-
-        must_try_text = (
-            "• Tiada maklumat mencukupi"
-        )
-
-    return (
+    message = (
 
         "🇲🇾 <b>MYBUZZ FOOD</b>\n\n"
 
         "🔥 <b>Cadangan Makanan Hari Ini</b>\n\n"
 
-        f"🍽️ <b>{food['name']}</b>\n\n"
+        f"🍽️ <b>{name}</b>\n\n"
 
         f"⭐ Rating: "
         f"{food['rating']:.1f}/5\n"
@@ -1889,26 +1769,20 @@ def build_malay_message(
         f"{food['review_count']:,}\n"
 
         f"💰 Harga: "
-        f"{food['price_level']}\n"
+        f"{price}\n"
 
-        f"📍 {food['address']}\n\n"
-
-        "🍴 <b>Wajib Cuba</b>\n"
-
-        f"{must_try_text}\n\n"
+        f"📍 {address}\n\n"
 
         "🔥 <b>Mengapa Disyorkan?</b>\n\n"
 
-        f"{clean_text(ai['malay_why'])}\n\n"
-
-        "🇲🇾 <b>Bahasa Melayu</b>\n\n"
-
-        f"{clean_text(ai['malay_body'])}\n\n"
+        f"{why}\n\n"
 
         "🕐 <b>Waktu Operasi</b>\n"
 
-        f"{hours_text}"
+        f"{hours_html}"
     )
+
+    return message
 
 
 # ============================================================
@@ -2104,11 +1978,6 @@ def main():
 
     # ========================================================
     # MALAY MESSAGE
-    # ========================================================
-    #
-    # IMPORTANT:
-    # Malay message also uses the SAME restaurant photo.
-    #
     # ========================================================
 
     malay_message = (
