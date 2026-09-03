@@ -1684,7 +1684,7 @@ def build_chinese_message(
 
         "🇲🇾 <b>MYBUZZ FOOD</b>\n\n"
 
-        "🔥 <b>今日美食推荐</b>\n\n"
+        "🔥 <b>今日餐厅推荐</b>\n\n"
 
         f"🍽️ <b>{name}</b>\n\n"
 
@@ -1758,7 +1758,7 @@ def build_malay_message(
 
         "🇲🇾 <b>MYBUZZ FOOD</b>\n\n"
 
-        "🔥 <b>Cadangan Makanan Hari Ini</b>\n\n"
+        "🔥 <b>Cadangan Resturant Hari Ini</b>\n\n"
 
         f"🍽️ <b>{name}</b>\n\n"
 
